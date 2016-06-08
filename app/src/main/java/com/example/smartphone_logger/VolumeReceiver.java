@@ -5,27 +5,14 @@ import android.app.ActivityManager;
 
 import android.content.*;
 import android.media.AudioManager;
-import static java.lang.System.out;
 import android.os.Bundle;
-import android.os.Environment;
 import android.content.IntentFilter;
 import android.util.Log;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.TextView;
 import android.os.BatteryManager;
 
-import java.io.File;
-import java.util.Timer; 
-
-import android.app.Service;
-import java.util.TimerTask;
-import java.util.List;
-import android.app.ActivityManager.RunningAppProcessInfo;
-import android.app.ActivityManager.RunningTaskInfo;
-import android.text.StaticLayout;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.SharedPreferences.Editor;
@@ -36,8 +23,9 @@ public class VolumeReceiver extends Activity implements OnClickListener {
 	public static String currentvol2;
 	public static String app_name;
 	SharedPreferences sharedPref;
-	LogCollect logc = new LogCollect();
-	
+	private LogCollect _logc = new LogCollect();
+	Global _global = new Global();
+
 	//UI
 	private Button button1;
 	private TextView view;
@@ -48,7 +36,13 @@ public class VolumeReceiver extends Activity implements OnClickListener {
 	public void onCreate(Bundle savedInstanceState){
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		
+
+
+
+		//Global変数の取得
+		_global = (Global) this.getApplication();
+		_global.globalContext = this.getApplication();
+
 		//button登録
 		button1 = (Button)findViewById(R.id.button1);
         button1.setOnClickListener(clicked);
@@ -79,10 +73,10 @@ public class VolumeReceiver extends Activity implements OnClickListener {
 		public void onReceive(Context context, Intent intent) {
 			//インテント受け取り
 			if(intent.getAction().equals(Intent.ACTION_SCREEN_ON)){
-				logc.LogWrite(System.currentTimeMillis(),1,"1");
+				_logc.LogWrite(System.currentTimeMillis(),1,"1");
 				//Log.i("[BroadcastReceiver]", "Screen ON");
 			}else if(intent.getAction().equals(Intent.ACTION_SCREEN_OFF)){
-				logc.LogWrite(System.currentTimeMillis(),2,"0");
+				_logc.LogWrite(System.currentTimeMillis(),2,"0");
 				//Log.i("[BroadcastReceiver]", "Screen OFF");
 			}else if(intent.getAction().equals(Intent.ACTION_BATTERY_CHANGED)){
 				int status_b = intent.getIntExtra("status",0);
@@ -95,7 +89,7 @@ public class VolumeReceiver extends Activity implements OnClickListener {
 						Editor editor = sharedPref.edit();
 						editor.putBoolean("battery", true);
 						editor.commit();
-						logc.LogWrite(System.currentTimeMillis(),11,"1");
+						_logc.LogWrite(System.currentTimeMillis(),11,"1");
 						Log.i("[BroadcastReceiver]", "Charging");
 					}
         		
@@ -108,16 +102,16 @@ public class VolumeReceiver extends Activity implements OnClickListener {
 						Editor editor = sharedPref.edit();
 						editor.putBoolean("battery", false);
 						editor.commit();
-						logc.LogWrite(System.currentTimeMillis(),12,"0");
+						_logc.LogWrite(System.currentTimeMillis(),12,"0");
 					}
 				}
 			}else if(intent.getAction().equals(Intent.ACTION_HEADSET_PLUG)){
 				int status_p = intent.getIntExtra("status",0);
         		if (status_p == 0) {
-        			logc.LogWrite(System.currentTimeMillis(),7,"0");
+        			_logc.LogWrite(System.currentTimeMillis(),7,"0");
         			//Log.i("[BroadcastReceiver]", "Headset off");
         		}else if(status_p == 1){
-        			logc.LogWrite(System.currentTimeMillis(),6,"1");
+        			_logc.LogWrite(System.currentTimeMillis(),6,"1");
         			//Log.i("[BroadcastReceiver]", "Headset on");
         		}
 			}
@@ -129,7 +123,13 @@ public class VolumeReceiver extends Activity implements OnClickListener {
 	private View.OnClickListener clicked = new View.OnClickListener() {	 
 		public void onClick(View v) {
 			if (v.getId() == R.id.button1) {
-	
+				if(!_global.collect_flag) {
+					_global.collect_flag = true;
+					view.setText("計測中");
+				}else{
+					_global.collect_flag = false;
+					view.setText("計測していません");
+				}
 			}
 		}
 	};
@@ -176,7 +176,7 @@ public class VolumeReceiver extends Activity implements OnClickListener {
         Editor editor = sharedPref.edit();
         editor.putString("current_app", app_name);
         editor.commit();
-        logc.LogWrite(System.currentTimeMillis(),35,app_name);
+		_logc.LogWrite(System.currentTimeMillis(),35,app_name);
         /*
 		ActivityManager mActiviyManager = (ActivityManager)getSystemService(ACTIVITY_SERVICE);
 		List<RunningAppProcessInfo> processList = mActiviyManager.getRunningAppProcesses();
@@ -230,6 +230,6 @@ public class VolumeReceiver extends Activity implements OnClickListener {
 	@Override
 	public void onClick(DialogInterface dialog, int which) {
 		// TODO Auto-generated method stub
-		
+
 	}
 }
