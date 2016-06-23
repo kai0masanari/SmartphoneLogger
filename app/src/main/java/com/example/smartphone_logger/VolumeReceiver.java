@@ -38,7 +38,7 @@ public class VolumeReceiver extends Activity implements OnClickListener {
 		setContentView(R.layout.activity_main);
 
 
-
+		startActivity(new Intent("android.settings.USAGE_ACCESS_SETTINGS"));
 		//Global変数の取得
 		_global = (Global) this.getApplication();
 		_global.globalContext = this.getApplication();

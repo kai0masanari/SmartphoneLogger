@@ -2,6 +2,8 @@ package com.example.smartphone_logger;
 
 import android.app.Activity;
 import android.app.ActivityManager;
+import android.app.usage.UsageEvents;
+import android.app.usage.UsageStatsManager;
 import android.content.*;
 import android.media.AudioManager;
 import static java.lang.System.out;
@@ -40,19 +42,28 @@ public class TestService extends Service{
 		timer.scheduleAtFixedRate(new TimerTask(){ 
 			@Override
 			public void run() {
+				/*
+				UsageStatsManager stats = (UsageStatsManager) getSystemService("usagestats");
+				UsageEvents usageEvents = stats.queryEvents(start, end);
+				*/
+				UsageStatsManager usm = (UsageStatsManager)getApplicationContext().getSystemService("usagestats");
+				//UsageEvents events = usm.queryEvents(time - interval, time);
+
 				/*今現在開いてるアプリを調べる*/
+
+				/*
 				ActivityManager test = (ActivityManager)getSystemService(Context.ACTIVITY_SERVICE);
 				current_app = (test.getRunningTasks(1).get(0).topActivity.getPackageName());
 				
-				/*以前開いていたアプリを調べる*/
+				//以前開いていたアプリを調べる
 				sharedPref = getSharedPreferences("apply_data", MODE_PRIVATE);
 				before_app = sharedPref.getString("current_app","");
 				
 				if(current_app.equals(before_app)){
-					//Log.i("そのまま",current_app+","+before_app);
+					Log.i("そのまま",current_app+","+before_app);
 					
 				}else{
-					//Log.i("変わった",current_app+","+before_app);
+					Log.i("変わった",current_app+","+before_app);
 					logc.LogWrite(System.currentTimeMillis(),35,current_app);
 					
 					//Preference
@@ -61,7 +72,7 @@ public class TestService extends Service{
 			        editor.putString("current_app", current_app);
 			        editor.commit();
 				}
-				
+				*/
 				} }, 0, INTERVAL_PERIOD);
 		return START_STICKY;
 	}
