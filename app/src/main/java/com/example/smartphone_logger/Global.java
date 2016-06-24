@@ -10,8 +10,11 @@ public class Global extends Application {
     private static Global sInstance;
     public static Context globalContext;
 
-    //録音フラグの保持
+    //計測フラグの保持
     public boolean collect_flag = false;
+
+    //計測に用いるメソッドの切り替え
+    public static int u_permission = -1;
 
     @Override
     public void onCreate() {

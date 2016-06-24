@@ -1,10 +1,13 @@
 package com.example.smartphone_logger;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.ActivityManager;
 
+import android.app.AppOpsManager;
 import android.content.*;
 import android.media.AudioManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.content.IntentFilter;
 import android.util.Log;
@@ -13,6 +16,8 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.os.BatteryManager;
 
+import android.os.Process;
+import android.widget.Toast;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.SharedPreferences.Editor;
@@ -29,26 +34,30 @@ public class VolumeReceiver extends Activity implements OnClickListener {
 	//UI
 	private Button button1;
 	private TextView view;
-	
+
 	//取得するデータ
 	private String android_id;
-	
+
+	private boolean u_permission = false;
+
+
 	public void onCreate(Bundle savedInstanceState){
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 
-
-		startActivity(new Intent("android.settings.USAGE_ACCESS_SETTINGS"));
 		//Global変数の取得
 		_global = (Global) this.getApplication();
 		_global.globalContext = this.getApplication();
+
+		//permissionの確認
+		_global.u_permission = checkpermission(getApplicationContext());
 
 		//button登録
 		button1 = (Button)findViewById(R.id.button1);
         button1.setOnClickListener(clicked);
 		view = (TextView)findViewById(R.id.textView3); //current state
 		android_id = android.provider.Settings.Secure.getString(getContentResolver(),android.provider.Settings.Secure.ANDROID_ID);
-		
+
 		//intent-filter登録
 		registerReceiver(mybroadcast, new IntentFilter(Intent.ACTION_SCREEN_ON));
 		registerReceiver(mybroadcast, new IntentFilter(Intent.ACTION_SCREEN_OFF));
@@ -65,8 +74,8 @@ public class VolumeReceiver extends Activity implements OnClickListener {
         editor.putString("current_app", app_name);
         editor.commit();
 	}
-	
-	
+
+
 	BroadcastReceiver mybroadcast = new BroadcastReceiver() {
 		//When Event is published, onReceive method is called
 		@Override
@@ -83,7 +92,7 @@ public class VolumeReceiver extends Activity implements OnClickListener {
 				if (status_b == BatteryManager.BATTERY_STATUS_CHARGING) {
 					sharedPref = getSharedPreferences("apply_data", MODE_PRIVATE);
 					Boolean before_b = sharedPref.getBoolean("battery",false);
-        		
+
 					if(before_b == false){
 						sharedPref = getSharedPreferences("apply_data", MODE_PRIVATE);
 						Editor editor = sharedPref.edit();
@@ -92,11 +101,11 @@ public class VolumeReceiver extends Activity implements OnClickListener {
 						_logc.LogWrite(System.currentTimeMillis(),11,"1");
 						Log.i("[BroadcastReceiver]", "Charging");
 					}
-        		
+
 				} else if (status_b == BatteryManager.BATTERY_STATUS_DISCHARGING) {
 					sharedPref = getSharedPreferences("apply_data", MODE_PRIVATE);
 					Boolean before_b = sharedPref.getBoolean("battery",true);
-        		
+
 					if(before_b){
 						sharedPref = getSharedPreferences("apply_data", MODE_PRIVATE);
 						Editor editor = sharedPref.edit();
@@ -117,18 +126,22 @@ public class VolumeReceiver extends Activity implements OnClickListener {
 			}
 		}
 	};
-	
-	 
 
-	private View.OnClickListener clicked = new View.OnClickListener() {	 
+
+
+	private View.OnClickListener clicked = new View.OnClickListener() {
 		public void onClick(View v) {
 			if (v.getId() == R.id.button1) {
-				if(!_global.collect_flag) {
-					_global.collect_flag = true;
-					view.setText("計測中");
+				if(_global.u_permission != -1) {
+					if (!_global.collect_flag) {
+						_global.collect_flag = true;
+						view.setText("計測中");
+					} else {
+						_global.collect_flag = false;
+						view.setText("計測していません");
+					}
 				}else{
-					_global.collect_flag = false;
-					view.setText("計測していません");
+					Toast.makeText(getApplicationContext(), "アプリ使用状況へのアクセスを許可してください", Toast.LENGTH_SHORT).show();
 				}
 			}
 		}
@@ -139,22 +152,38 @@ public class VolumeReceiver extends Activity implements OnClickListener {
 		super.onResume();
 		//受信を開始
 		IntentFilter filter = new IntentFilter();
-		registerReceiver(myReceiver,filter);
+		registerReceiver(myReceiver, filter);
 	}
-	
+
 	public BroadcastReceiver myReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 		}
 	};
-	
+
+	@TargetApi(Build.VERSION_CODES.LOLLIPOP)
+	public static int checkpermission(Context context) {
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+			return 1;
+		} else {
+			// AppOpsManagerを取得
+			AppOpsManager aom = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
+			// GET_USAGE_STATSのステータスを取得
+			int mode = aom.checkOp(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.getPackageName());
+			if (mode == AppOpsManager.MODE_DEFAULT) {
+				context.startActivity(new Intent("android.settings.USAGE_ACCESS_SETTINGS"));
+			}
+			return 0;
+		}
+	}
+
 	//音量取得用
 	public static String getAudioManager(Context context) {
         AudioManager test = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         currentvol2 = Integer.toString(test.getStreamVolume(AudioManager.STREAM_RING));
         return currentvol2;
     }
-	
+
 	/*
 	//プロセス取得用
 	public static String getActivityManager(Context context) {
@@ -164,7 +193,7 @@ public class VolumeReceiver extends Activity implements OnClickListener {
         return app_name;
     }
     */
-	
+
 	public void onUserLeaveHint(){
         //ホームボタンが押された時や、他のアプリが起動した時に呼ばれる
         //戻るボタンが押された場合には呼ばれない
@@ -175,7 +204,7 @@ public class VolumeReceiver extends Activity implements OnClickListener {
         sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         Editor editor = sharedPref.edit();
         editor.putString("current_app", app_name);
-        editor.commit();
+		editor.commit();
 		_logc.LogWrite(System.currentTimeMillis(),35,app_name);
         /*
 		ActivityManager mActiviyManager = (ActivityManager)getSystemService(ACTIVITY_SERVICE);
@@ -186,22 +215,22 @@ public class VolumeReceiver extends Activity implements OnClickListener {
 		}
 		*/
 	}
-	
+
 	protected void onDestroy() {
 		// TODO Auto-generated method stub
 		super.onDestroy();
 	}
-	
+
 
 
 	//public BroadcastReceiver receiver;
 	public static class InnerReceiver extends BroadcastReceiver{
 		LogCollect logc = new LogCollect();
-		
+
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			if(intent.getAction().equals("android.media.RINGER_MODE_CHANGED")) {
-				//着信モードが変更された時の処理を記述	
+				//着信モードが変更された時の処理を記述
 				if(intent.getIntExtra(AudioManager.EXTRA_RINGER_MODE, -1) == AudioManager.RINGER_MODE_VIBRATE){
 					//out.println("Change to vibrate");
 					logc.LogWrite(System.currentTimeMillis(),24,"1");
@@ -214,7 +243,7 @@ public class VolumeReceiver extends Activity implements OnClickListener {
 			} else if(intent.getAction().equals("android.media.VOLUME_CHANGED_ACTION")) {
 				//音量が変更された時の処理を記述
 				String ringvol = getAudioManager(context);
-				
+
 				//現状だと取得できるのはシステム音量のみ
 				if(ringvol != Integer.toString(0)){
 					logc.LogWrite(System.currentTimeMillis(),37,ringvol);
